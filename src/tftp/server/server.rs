@@ -26,10 +26,11 @@ use crate::tftp::core::OptionType;
 /// use xtool::tftp::server::{Config, Server};
 /// use std::path::PathBuf;
 ///
-/// let config = Config::new(
-///     "127.0.0.1".parse().unwrap(),
+/// let config = Config::with_defaults().merge_cli(
+///     "127.0.0.1".to_string(),
 ///     69,
 ///     PathBuf::from("/tmp/tftp"),
+///     false,
 ///     false,
 /// );
 /// let server = Server::new(&config).unwrap();
@@ -49,17 +50,26 @@ pub struct Server {
 impl Server {
     /// Creates the TFTP Server with the supplied [`Config`].
     pub fn new(config: &Config) -> anyhow::Result<Server> {
-        let socket = UdpSocket::bind(SocketAddr::from((config.ip_address, config.port)))?;
+        let ip_str = config.ip.as_deref().unwrap_or("0.0.0.0");
+        let ip_addr: std::net::IpAddr = ip_str.parse()?;
+        let port = config.port.unwrap_or(69);
+
+        let socket = UdpSocket::bind(SocketAddr::from((ip_addr, port)))?;
+        
+        let directory = config.directory.clone().unwrap_or_else(|| PathBuf::from("."));
+        let receive_directory = config.receive_directory.clone().unwrap_or_else(|| directory.clone());
+        let send_directory = config.send_directory.clone().unwrap_or_else(|| directory.clone());
+
         let server = Server {
             socket,
-            receive_directory: config.receive_directory.clone(),
-            send_directory: config.send_directory.clone(),
-            single_port: config.single_port,
-            read_only: config.read_only,
-            overwrite: config.overwrite,
+            receive_directory,
+            send_directory,
+            single_port: config.single_port.unwrap_or(false),
+            read_only: config.read_only.unwrap_or(false),
+            overwrite: config.overwrite.unwrap_or(true),
             largest_block_size: DEFAULT_BLOCK_SIZE,
             clients: HashMap::new(),
-            opt_local: config.opt_local.clone(),
+            opt_local: config.get_options(),
         };
 
         Ok(server)

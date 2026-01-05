@@ -1,3 +1,4 @@
+﻿mod config;
 mod tftp;
 
 use anyhow::Result;
@@ -42,6 +43,13 @@ enum Commands {
         #[command(subcommand)]
         action: tftp::client::TftpcAction,
     },
+
+    /// Generate configuration file (.xtool.toml) in current directory
+    Genconfig {
+        /// Force overwrite existing configuration file
+        #[arg(long)]
+        force: bool,
+    },
 }
 
 fn main() -> Result<()> {
@@ -62,6 +70,23 @@ fn main() -> Result<()> {
         .init();
 
     let cli = Cli::parse();
+    
+    // Try to load configuration file
+    let config_path = ".xtool.toml";
+    let app_config = if std::path::Path::new(config_path).exists() {
+        match config::AppConfig::load_from_file(config_path) {
+            Ok(cfg) => {
+                eprintln!("Using configuration file: {}", config_path);
+                Some(cfg)
+            }
+            Err(e) => {
+                eprintln!("Failed to load configuration file: {}, using defaults", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
 
     match cli.command {
         Commands::Tftpd {
@@ -71,11 +96,28 @@ fn main() -> Result<()> {
             read_only,
             single_port,
         } => {
-            tftp::server::run(ip, port, path, read_only, single_port)?;
+            tftp::server::run_with_config(
+                ip,
+                port,
+                path,
+                read_only,
+                single_port,
+                app_config.as_ref().and_then(|c| c.tftpd.clone()),
+            )?;
         }
 
         Commands::Tftpc { action } => {
-            tftp::client::run(action)?;
+            // Client configuration merging is handled inside client::run_with_config
+            tftp::client::run_with_config(action, app_config.as_ref().and_then(|c| c.tftpc.as_ref()))?;
+        }
+
+        Commands::Genconfig {
+            force,
+        } => {
+            if let Err(e) = config::AppConfig::generate_config_file(force) {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
         }
     }
 

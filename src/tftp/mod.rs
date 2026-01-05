@@ -35,11 +35,12 @@
 //! use xtool::tftp::{server::Config, server::Server};
 //! use std::path::PathBuf;
 //!
-//! let config = Config::new(
-//!     "0.0.0.0".parse().unwrap(),
+//! let config = Config::with_defaults().merge_cli(
+//!     "0.0.0.0".to_string(),
 //!     69,
 //!     PathBuf::from("/var/tftp"),
-//!     false, // read_only
+//!     false,
+//!     false,
 //! );
 //!
 //! let mut server = Server::new(&config).unwrap();

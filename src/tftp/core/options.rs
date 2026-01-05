@@ -17,7 +17,8 @@ pub enum RequestType {
 }
 
 /// Enum used to set the block counter roll-over policy
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 #[allow(dead_code)]
 pub enum Rollover {
     /// Rollover forbidden
@@ -33,7 +34,7 @@ pub enum Rollover {
 /// Local options `struct` used for storing and passing options for client and server
 /// set directly from executable arguments. Though present on both sides of the
 /// transfer, they can differ and are independent.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct OptionsPrivate {
     /// Duplicate all packets sent from the server. (default: 0)
     pub repeat_count: u8,

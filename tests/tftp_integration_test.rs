@@ -3,13 +3,15 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
-use xtool::tftp::client::{Client, ClientConfig};
+use xtool::tftp::client::Client;
+use xtool::tftp::client::config::ClientConfig;
 use xtool::tftp::server::{Config, Server};
 
 // Use serial_test to prevent port conflicts
 use serial_test::serial;
 
 fn setup_test_env() -> (PathBuf, PathBuf) {
+    let _ = env_logger::builder().is_test(true).try_init();
     let test_dir = std::env::temp_dir().join(format!("tftp_test_{}", std::process::id()));
     let server_dir = test_dir.join("server");
     let client_dir = test_dir.join("client");
@@ -26,7 +28,13 @@ fn cleanup_test_env(test_dir: &PathBuf) {
 
 fn start_test_server(port: u16, root_dir: PathBuf) -> thread::JoinHandle<()> {
     thread::spawn(move || {
-        let config = Config::new("127.0.0.1".parse().unwrap(), port, root_dir, false);
+        let config = Config::default().merge_cli(
+            "127.0.0.1".to_string(),
+            port,
+            root_dir,
+            false,
+            false,
+        );
         let mut server = Server::new(&config).unwrap();
         server.listen();
     })

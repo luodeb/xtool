@@ -1,4 +1,4 @@
-//! TFTP client implementation
+﻿//! TFTP client implementation
 //!
 //! This module provides TFTP client functionality:
 //! - File download (GET/RRQ)
@@ -10,10 +10,11 @@
 //! ## Download file
 //!
 //! ```rust,no_run
-//! use xtool::tftp::client::{Client, ClientConfig};
+//! use xtool::tftp::client::Client;
+//! use xtool::tftp::client::config::ClientConfig;
 //! use std::path::Path;
 //!
-//! let config = ClientConfig::new("192.168.1.100".parse().unwrap(), 69);
+//! let config = ClientConfig::new("192.168.1.100".to_string(), 69);
 //! let client = Client::new(config).unwrap();
 //! client.get("remote.txt", Path::new("local.txt")).unwrap();
 //! ```
@@ -21,10 +22,11 @@
 //! ## Upload file
 //!
 //! ```rust,no_run
-//! use xtool::tftp::client::{Client, ClientConfig};
+//! use xtool::tftp::client::Client;
+//! use xtool::tftp::client::config::ClientConfig;
 //! use std::path::Path;
 //!
-//! let config = ClientConfig::new("192.168.1.100".parse().unwrap(), 69);
+//! let config = ClientConfig::new("192.168.1.100".to_string(), 69);
 //! let client = Client::new(config).unwrap();
 //! client.put(Path::new("local.txt"), "remote.txt").unwrap();
 //! ```
@@ -39,15 +41,14 @@
 //! xtool tftpc put 192.168.1.100 local.txt [remote.txt]
 //! ```
 
-mod client;
-mod config;
+pub mod client;
+pub mod config;
 
 use anyhow::Result;
 use clap::Subcommand;
 use std::path::PathBuf;
 
 pub use client::Client;
-pub use config::ClientConfig;
 
 #[derive(Subcommand)]
 pub enum TftpcAction {
@@ -102,8 +103,8 @@ pub enum TftpcAction {
     },
 }
 
-/// Run TFTP client command
-pub fn run(action: TftpcAction) -> Result<()> {
+/// Run TFTP client command with configuration
+pub fn run_with_config(action: TftpcAction, config: Option<&config::TftpcConfigFile>) -> Result<()> {
     match action {
         TftpcAction::Get {
             server,
@@ -113,7 +114,27 @@ pub fn run(action: TftpcAction) -> Result<()> {
             block_size,
             timeout,
         } => {
-            run_get(server, remote_file, local_file, port, block_size, timeout)?;
+            let client_config = config.and_then(|c| c.get.clone()).unwrap_or_default();
+            let cfg = client_config.merge_cli(
+                server.clone(),
+                port,
+                block_size,
+                timeout,
+            );
+            
+            let local_path = local_file.unwrap_or_else(|| PathBuf::from(&remote_file));
+
+            // Note: cfg.server is Option<String>, but merge_cli ensures it's set if cli_server is provided
+            let server_display = cfg.server.as_deref().unwrap_or("unknown");
+            let port_display = cfg.port.unwrap_or(69);
+
+            log::info!("Downloading {} from {}:{}", remote_file, server_display, port_display);
+            log::info!("Saving to: {}", local_path.display());
+
+            let client = Client::new(cfg)?;
+            client.get(&remote_file, &local_path)?;
+
+            log::info!("Download completed successfully");
         }
 
         TftpcAction::Put {
@@ -124,77 +145,38 @@ pub fn run(action: TftpcAction) -> Result<()> {
             block_size,
             timeout,
         } => {
-            run_put(server, local_file, remote_file, port, block_size, timeout)?;
+            let client_config = config.and_then(|c| c.put.clone()).unwrap_or_default();
+            let cfg = client_config.merge_cli(
+                server.clone(),
+                port,
+                block_size,
+                timeout,
+            );
+
+            if !local_file.exists() {
+                log::error!("Local file does not exist: {}", local_file.display());
+                return Err(anyhow::anyhow!("Local file does not exist"));
+            }
+
+            let remote_name = remote_file.unwrap_or_else(|| {
+                local_file
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("file")
+                    .to_string()
+            });
+
+            let server_display = cfg.server.as_deref().unwrap_or("unknown");
+            let port_display = cfg.port.unwrap_or(69);
+
+            log::info!("Uploading {} to {}:{}", local_file.display(), server_display, port_display);
+            log::info!("Remote file: {}", remote_name);
+
+            let client = Client::new(cfg)?;
+            client.put(&local_file, &remote_name)?;
+
+            log::info!("Upload completed successfully");
         }
     }
-    Ok(())
-}
-
-/// Run TFTP client download command
-pub fn run_get(
-    server: String,
-    remote_file: String,
-    local_file: Option<PathBuf>,
-    port: u16,
-    block_size: u16,
-    timeout: u64,
-) -> Result<()> {
-    let server_ip = server
-        .parse()
-        .map_err(|e| anyhow::anyhow!("Invalid server address '{}': {}", server, e))?;
-
-    let local_path = local_file.unwrap_or_else(|| PathBuf::from(&remote_file));
-
-    log::info!("Downloading {} from {}:{}", remote_file, server, port);
-    log::info!("Saving to: {}", local_path.display());
-
-    let config = ClientConfig::new(server_ip, port)
-        .with_block_size(block_size)
-        .with_timeout(std::time::Duration::from_secs(timeout));
-
-    let client = Client::new(config)?;
-    client.get(&remote_file, &local_path)?;
-
-    log::info!("Download completed successfully");
-    Ok(())
-}
-
-/// Run TFTP client upload command
-pub fn run_put(
-    server: String,
-    local_file: PathBuf,
-    remote_file: Option<String>,
-    port: u16,
-    block_size: u16,
-    timeout: u64,
-) -> Result<()> {
-    if !local_file.exists() {
-        log::error!("Local file does not exist: {}", local_file.display());
-        return Err(anyhow::anyhow!("Local file does not exist"));
-    }
-
-    let server_ip = server
-        .parse()
-        .map_err(|e| anyhow::anyhow!("Invalid server address '{}': {}", server, e))?;
-
-    let remote_name = remote_file.unwrap_or_else(|| {
-        local_file
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("file")
-            .to_string()
-    });
-
-    log::info!("Uploading {} to {}:{}", local_file.display(), server, port);
-    log::info!("Remote file: {}", remote_name);
-
-    let config = ClientConfig::new(server_ip, port)
-        .with_block_size(block_size)
-        .with_timeout(std::time::Duration::from_secs(timeout));
-
-    let client = Client::new(config)?;
-    client.put(&local_file, &remote_name)?;
-
-    log::info!("Upload completed successfully");
     Ok(())
 }

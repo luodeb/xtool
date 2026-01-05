@@ -1,63 +1,75 @@
-use std::net::IpAddr;
-use std::time::Duration;
+﻿use std::time::Duration;
+use serde::{Serialize, Deserialize};
 
-/// TFTP client configuration
-///
-/// # Example
-///
-/// ```rust
-/// use xtool::tftp::client::ClientConfig;
-///
-/// let config = ClientConfig::new("192.168.1.100".parse().unwrap(), 69);
-/// ```
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct TftpcConfigFile {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub get: Option<ClientConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub put: Option<ClientConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ClientConfig {
-    /// Server IP address
-    pub server_ip: IpAddr,
-    /// Server port number
-    pub server_port: u16,
-    /// Block size (default 512, negotiable)
-    pub block_size: u16,
-    /// Timeout duration
-    pub timeout: Duration,
-    /// Window size (RFC 7440)
-    pub window_size: u16,
-    /// Transfer mode (currently only supports octet)
-    pub mode: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub server: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub port: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_size: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none", with = "humantime_serde")]
+    pub timeout: Option<Duration>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub window_size: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mode: Option<String>,
 }
 
 impl ClientConfig {
-    /// Create new client configuration
-    ///
-    /// # Arguments
-    ///
-    /// * `server_ip` - Server IP address
-    /// * `server_port` - Server port number (usually 69)
-    pub fn new(server_ip: IpAddr, server_port: u16) -> Self {
+    pub fn new(server: String, port: u16) -> Self {
         Self {
-            server_ip,
-            server_port,
-            block_size: 512,
-            timeout: Duration::from_secs(5),
-            window_size: 1,
-            mode: "octet".to_string(),
+            server: Some(server),
+            port: Some(port),
+            block_size: Some(512),
+            timeout: Some(Duration::from_secs(5)),
+            window_size: Some(1),
+            mode: Some("octet".to_string()),
         }
     }
+    
+    pub fn merge_cli(
+        mut self,
+        cli_server: String,
+        cli_port: u16,
+        cli_block_size: u16,
+        cli_timeout: u64,
+    ) -> Self {
+        // CLI args are used if config file doesn't specify them
+        // (Matching previous behavior: File > CLI)
+        if self.server.is_none() { self.server = Some(cli_server); }
+        if self.port.is_none() { self.port = Some(cli_port); }
+        if self.block_size.is_none() { self.block_size = Some(cli_block_size); }
+        if self.timeout.is_none() { self.timeout = Some(Duration::from_secs(cli_timeout)); }
+        if self.window_size.is_none() { self.window_size = Some(1); }
+        if self.mode.is_none() { self.mode = Some("octet".to_string()); }
+        self
+    }
 
-    /// Set block size
+    #[allow(dead_code)]
     pub fn with_block_size(mut self, block_size: u16) -> Self {
-        self.block_size = block_size;
+        self.block_size = Some(block_size);
         self
     }
 
-    /// Set timeout duration
+    #[allow(dead_code)]
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
-        self.timeout = timeout;
+        self.timeout = Some(timeout);
         self
     }
-}
 
-impl Default for ClientConfig {
-    fn default() -> Self {
-        Self::new("127.0.0.1".parse().unwrap(), 69)
+    #[allow(dead_code)]
+    pub fn with_window_size(mut self, window_size: u16) -> Self {
+        self.window_size = Some(window_size);
+        self
     }
 }

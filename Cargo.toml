@@ -18,6 +18,9 @@ tokio = { version = "1.49", features = ["full"] }
 log = "0.4"
 env_logger = "0.11"
 chrono = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+humantime-serde = "1.1"
 
 [dev-dependencies]
 serial_test = "3.2"

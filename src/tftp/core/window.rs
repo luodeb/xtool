@@ -100,6 +100,7 @@ impl Window {
     }
 
     /// Clears all elements from the `Window`.
+    #[allow(dead_code)]
     pub fn clear(&mut self) {
         self.elements.clear();
     }
