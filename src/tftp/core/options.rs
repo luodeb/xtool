@@ -9,7 +9,7 @@ pub const DEFAULT_WINDOW_WAIT: Duration = Duration::from_millis(0);
 pub const DEFAULT_MAX_RETRIES: usize = 6;
 pub const DEFAULT_ROLLOVER: Rollover = Rollover::Enforce0;
 
-/// 请求类型（读或写）
+/// Request type (read or write)
 #[derive(Debug, PartialEq)]
 pub enum RequestType {
     Read(u64),

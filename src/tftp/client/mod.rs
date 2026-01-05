@@ -1,13 +1,13 @@
-//! TFTP 客户端实现
+//! TFTP client implementation
 //!
-//! 本模块提供 TFTP 客户端功能：
-//! - 文件下载（GET/RRQ）
-//! - 文件上传（PUT/WRQ）
-//! - 支持所有 TFTP 选项扩展
+//! This module provides TFTP client functionality:
+//! - File download (GET/RRQ)
+//! - File upload (PUT/WRQ)
+//! - Supports all TFTP option extensions
 //!
-//! # 使用示例
+//! # Usage Examples
 //!
-//! ## 下载文件
+//! ## Download file
 //!
 //! ```rust,no_run
 //! use xtool::tftp::client::{Client, ClientConfig};
@@ -18,7 +18,7 @@
 //! client.get("remote.txt", Path::new("local.txt")).unwrap();
 //! ```
 //!
-//! ## 上传文件
+//! ## Upload file
 //!
 //! ```rust,no_run
 //! use xtool::tftp::client::{Client, ClientConfig};
@@ -29,13 +29,13 @@
 //! client.put(Path::new("local.txt"), "remote.txt").unwrap();
 //! ```
 //!
-//! # 命令行使用
+//! # Command Line Usage
 //!
 //! ```bash
-//! # 下载文件
+//! # Download file
 //! xtool tftpc get 192.168.1.100 remote.txt [local.txt]
 //!
-//! # 上传文件
+//! # Upload file
 //! xtool tftpc put 192.168.1.100 local.txt [remote.txt]
 //! ```
 
@@ -102,7 +102,7 @@ pub enum TftpcAction {
     },
 }
 
-/// 运行 TFTP 客户端命令
+/// Run TFTP client command
 pub fn run(action: TftpcAction) -> Result<()> {
     match action {
         TftpcAction::Get {
@@ -130,7 +130,7 @@ pub fn run(action: TftpcAction) -> Result<()> {
     Ok(())
 }
 
-/// 运行 TFTP 客户端下载命令
+/// Run TFTP client download command
 pub fn run_get(
     server: String,
     remote_file: String,
@@ -159,7 +159,7 @@ pub fn run_get(
     Ok(())
 }
 
-/// 运行 TFTP 客户端上传命令
+/// Run TFTP client upload command
 pub fn run_put(
     server: String,
     local_file: PathBuf,

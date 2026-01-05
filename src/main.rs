@@ -45,7 +45,7 @@ enum Commands {
 }
 
 fn main() -> Result<()> {
-    // 初始化日志，默认 info 等级，显示文件行数和时分秒
+    // Initialize logger, default info level, display file line number and time
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
         .format(|buf, record| {
             use std::io::Write;

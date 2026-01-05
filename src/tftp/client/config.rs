@@ -1,9 +1,9 @@
 use std::net::IpAddr;
 use std::time::Duration;
 
-/// TFTP 客户端配置
+/// TFTP client configuration
 ///
-/// # 示例
+/// # Example
 ///
 /// ```rust
 /// use xtool::tftp::client::ClientConfig;
@@ -11,27 +11,27 @@ use std::time::Duration;
 /// let config = ClientConfig::new("192.168.1.100".parse().unwrap(), 69);
 /// ```
 pub struct ClientConfig {
-    /// 服务器 IP 地址
+    /// Server IP address
     pub server_ip: IpAddr,
-    /// 服务器端口号
+    /// Server port number
     pub server_port: u16,
-    /// 块大小（默认 512，可协商）
+    /// Block size (default 512, negotiable)
     pub block_size: u16,
-    /// 超时时间
+    /// Timeout duration
     pub timeout: Duration,
-    /// 窗口大小（RFC 7440）
+    /// Window size (RFC 7440)
     pub window_size: u16,
-    /// 传输模式（目前只支持 octet）
+    /// Transfer mode (currently only supports octet)
     pub mode: String,
 }
 
 impl ClientConfig {
-    /// 创建新的客户端配置
+    /// Create new client configuration
     ///
-    /// # 参数
+    /// # Arguments
     ///
-    /// * `server_ip` - 服务器 IP 地址
-    /// * `server_port` - 服务器端口号（通常为 69）
+    /// * `server_ip` - Server IP address
+    /// * `server_port` - Server port number (usually 69)
     pub fn new(server_ip: IpAddr, server_port: u16) -> Self {
         Self {
             server_ip,
@@ -43,13 +43,13 @@ impl ClientConfig {
         }
     }
 
-    /// 设置块大小
+    /// Set block size
     pub fn with_block_size(mut self, block_size: u16) -> Self {
         self.block_size = block_size;
         self
     }
 
-    /// 设置超时时间
+    /// Set timeout duration
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self

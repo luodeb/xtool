@@ -7,11 +7,11 @@ use super::config::ClientConfig;
 use crate::tftp::core::options::{OptionsProtocol, RequestType};
 use crate::tftp::core::{Packet, TransferOption, Window};
 
-/// TFTP 客户端
+/// TFTP client
 ///
-/// 支持文件的上传（PUT）和下载（GET）操作
+/// Supports file upload (PUT) and download (GET) operations
 ///
-/// # 示例
+/// # Example
 ///
 /// ```rust,no_run
 /// use xtool::tftp::client::{Client, ClientConfig};
@@ -20,10 +20,10 @@ use crate::tftp::core::{Packet, TransferOption, Window};
 /// let config = ClientConfig::new("192.168.1.100".parse().unwrap(), 69);
 /// let client = Client::new(config).unwrap();
 ///
-/// // 下载文件
+/// // Download file
 /// client.get("remote.txt", Path::new("local.txt")).unwrap();
 ///
-/// // 上传文件
+/// // Upload file
 /// client.put(Path::new("local.txt"), "remote.txt").unwrap();
 /// ```
 pub struct Client {
@@ -31,28 +31,28 @@ pub struct Client {
 }
 
 impl Client {
-    /// 创建新的 TFTP 客户端
+    /// Create a new TFTP client
     pub fn new(config: ClientConfig) -> anyhow::Result<Self> {
         Ok(Self { config })
     }
 
-    /// 从服务器下载文件（RRQ - Read Request）
+    /// Download a file from the server (RRQ - Read Request)
     ///
-    /// # 参数
+    /// # Arguments
     ///
-    /// * `remote_file` - 服务器上的文件名
-    /// * `local_file` - 本地保存路径
+    /// * `remote_file` - File name on the server
+    /// * `local_file` - Local save path
     pub fn get(&self, remote_file: &str, local_file: &Path) -> anyhow::Result<()> {
         log::info!("Downloading {} to {}", remote_file, local_file.display());
 
-        // 创建本地 socket
+        // Create local socket
         let socket = UdpSocket::bind("0.0.0.0:0")?;
         let server_addr = SocketAddr::new(self.config.server_ip, self.config.server_port);
-        // 不使用 connect，而是使用 send_to
+        // Don't use connect, use send_to instead
         socket.set_read_timeout(Some(self.config.timeout))?;
         socket.set_write_timeout(Some(self.config.timeout))?;
 
-        // 准备选项
+        // Prepare options
         let mut options = vec![
             TransferOption {
                 option: crate::tftp::core::OptionType::BlockSize,
@@ -68,11 +68,11 @@ impl Client {
             },
             TransferOption {
                 option: crate::tftp::core::OptionType::TransferSize,
-                value: 0, // 请求服务器告知文件大小
+                value: 0, // Request server to provide file size
             },
         ];
 
-        // 发送 RRQ
+        // Send RRQ
         let rrq = Packet::Rrq {
             filename: remote_file.to_string(),
             mode: self.config.mode.clone(),
@@ -80,12 +80,12 @@ impl Client {
         };
         socket.send_to(&rrq.serialize()?, &server_addr)?;
 
-        // 等待响应（OACK 或第一个数据包）
+        // Wait for response (OACK or first data packet)
         let mut buf = vec![0u8; 65536];
         let (amt, new_addr) = socket.recv_from(&mut buf)?;
         let response = Packet::deserialize(&buf[..amt])?;
 
-        // 重新连接到服务器的新端口（TFTP 服务器为每个传输创建新端口）
+        // Reconnect to the server's new port (TFTP server creates a new port for each transfer)
         if new_addr != server_addr {
             socket.connect(new_addr)?;
         } else {
@@ -97,7 +97,7 @@ impl Client {
                 options = opts.clone();
                 let opts = OptionsProtocol::parse(&mut options, RequestType::Read(0))?;
 
-                // 发送 ACK 0 确认选项
+                // Send ACK 0 to confirm options
                 let ack = Packet::Ack(0);
                 socket.send(&ack.serialize()?)?;
 
@@ -112,10 +112,10 @@ impl Client {
             }
         };
 
-        // 接收文件
+        // Receive file
         let file = File::create(local_file)?;
 
-        // 如果收到的是 OACK，则等待第一个 DATA 包；否则第一个包就是 DATA
+        // If received OACK, wait for first DATA packet; otherwise first packet is DATA
         let first_data_packet = if matches!(response, Packet::Oack(_)) {
             let (amt, _) = socket.recv_from(&mut buf)?;
             Packet::deserialize(&buf[..amt])?
@@ -129,12 +129,12 @@ impl Client {
         Ok(())
     }
 
-    /// 上传文件到服务器（WRQ - Write Request）
+    /// Upload a file to the server (WRQ - Write Request)
     ///
-    /// # 参数
+    /// # Arguments
     ///
-    /// * `local_file` - 本地文件路径
-    /// * `remote_file` - 服务器上的文件名
+    /// * `local_file` - Local file path
+    /// * `remote_file` - File name on the server
     pub fn put(&self, local_file: &Path, remote_file: &str) -> anyhow::Result<()> {
         log::info!("Uploading {} to {}", local_file.display(), remote_file);
 
@@ -144,14 +144,14 @@ impl Client {
 
         let file_size = local_file.metadata()?.len();
 
-        // 创建本地 socket
+        // Create local socket
         let socket = UdpSocket::bind("0.0.0.0:0")?;
         let server_addr = SocketAddr::new(self.config.server_ip, self.config.server_port);
-        // 不使用 connect，而是使用 send_to
+        // Don't use connect, use send_to instead
         socket.set_read_timeout(Some(self.config.timeout))?;
         socket.set_write_timeout(Some(self.config.timeout))?;
 
-        // 准备选项
+        // Prepare options
         let mut options = vec![
             TransferOption {
                 option: crate::tftp::core::OptionType::BlockSize,
@@ -171,7 +171,7 @@ impl Client {
             },
         ];
 
-        // 发送 WRQ
+        // Send WRQ
         let wrq = Packet::Wrq {
             filename: remote_file.to_string(),
             mode: self.config.mode.clone(),
@@ -179,12 +179,12 @@ impl Client {
         };
         socket.send_to(&wrq.serialize()?, &server_addr)?;
 
-        // 等待响应（OACK 或 ACK 0）
+        // Wait for response (OACK or ACK 0)
         let mut buf = vec![0u8; 65536];
         let (amt, new_addr) = socket.recv_from(&mut buf)?;
         let response = Packet::deserialize(&buf[..amt])?;
 
-        // 重新连接到服务器的新端口（TFTP 服务器为每个传输创建新端口）
+        // Reconnect to the server's new port (TFTP server creates a new port for each transfer)
         if new_addr != server_addr {
             socket.connect(new_addr)?;
         } else {
@@ -205,7 +205,7 @@ impl Client {
             }
         };
 
-        // 发送文件
+        // Send file
         let file = File::open(local_file)?;
         self.send_file(socket, file, worker_options)?;
 
@@ -213,7 +213,7 @@ impl Client {
         Ok(())
     }
 
-    /// 接收文件数据
+    /// Receive file data
     fn receive_file(
         &self,
         socket: UdpSocket,
@@ -224,19 +224,19 @@ impl Client {
         let mut expected_block: u16 = 1;
         let mut total_bytes = 0u64;
 
-        // 处理第一个包（如果是 DATA）
+        // Process first packet (if it's DATA)
         if let Packet::Data { block_num, data } = first_packet {
             if block_num == 1 {
                 file.write_all(&data)?;
                 total_bytes += data.len() as u64;
 
-                // 发送 ACK
+                // Send ACK
                 let ack = Packet::Ack(block_num);
                 socket.send(&ack.serialize()?)?;
 
                 expected_block = 2;
 
-                // 如果数据小于块大小，传输完成
+                // If data is less than block size, transfer is complete
                 if data.len() < options.block_size as usize {
                     log::debug!("Transfer complete. Total bytes: {}", total_bytes);
                     return Ok(());
@@ -244,7 +244,7 @@ impl Client {
             }
         }
 
-        // 继续接收后续数据包
+        // Continue receiving subsequent data packets
         let mut buf = vec![0u8; 65536];
         loop {
             let (amt, _) = socket.recv_from(&mut buf)?;
@@ -256,11 +256,11 @@ impl Client {
                         file.write_all(&data)?;
                         total_bytes += data.len() as u64;
 
-                        // 发送 ACK
+                        // Send ACK
                         let ack = Packet::Ack(block_num);
                         socket.send(&ack.serialize()?)?;
 
-                        // 如果数据小于块大小，传输完成
+                        // If data is less than block size, transfer is complete
                         if data.len() < options.block_size as usize {
                             log::debug!("Transfer complete. Total bytes: {}", total_bytes);
                             break;
@@ -273,7 +273,7 @@ impl Client {
                             block_num,
                             expected_block
                         );
-                        // 重新发送上一个 ACK
+                        // Resend previous ACK
                         let ack = Packet::Ack(expected_block.wrapping_sub(1));
                         socket.send(&ack.serialize()?)?;
                     }
@@ -290,7 +290,7 @@ impl Client {
         Ok(())
     }
 
-    /// 发送文件数据
+    /// Send file data
     fn send_file(
         &self,
         socket: UdpSocket,
@@ -302,10 +302,10 @@ impl Client {
         let mut total_bytes = 0u64;
 
         loop {
-            // 填充窗口
+            // Fill window
             let more = window.fill()?;
 
-            // 发送窗口中的所有数据包
+            // Send all packets in window
             for data in window.get_elements() {
                 let packet = Packet::Data {
                     block_num,
@@ -316,12 +316,12 @@ impl Client {
                 block_num = block_num.wrapping_add(1);
             }
 
-            // 如果没有更多数据，等待最后的 ACK 并退出
+            // If no more data, wait for final ACK and exit
             if !more && window.get_elements().is_empty() {
                 break;
             }
 
-            // 等待 ACK
+            // Wait for ACK
             let mut buf = vec![0u8; 65536];
             let (amt, _) = socket.recv_from(&mut buf)?;
             let packet = Packet::deserialize(&buf[..amt])?;
@@ -329,7 +329,7 @@ impl Client {
             match packet {
                 Packet::Ack(ack_block) => {
                     log::debug!("Received ACK for block {}", ack_block);
-                    // 清空窗口，准备下一批数据
+                    // Clear window, prepare for next batch
                     window.clear();
                 }
                 Packet::Error { code, msg } => {

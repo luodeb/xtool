@@ -3,11 +3,11 @@ use std::path::PathBuf;
 
 use crate::tftp::core::options::OptionsPrivate;
 
-/// TFTP 服务器配置
+/// TFTP server configuration
 ///
-/// 提供简化的配置接口，适配 xtool 项目的需求
+/// Provides a simplified configuration interface for the xtool project
 ///
-/// # 示例
+/// # Example
 ///
 /// ```rust
 /// use xtool::tftp::server::Config;
@@ -21,33 +21,33 @@ use crate::tftp::core::options::OptionsPrivate;
 /// );
 /// ```
 pub struct Config {
-    /// 监听的 IP 地址
+    /// IP address to listen on
     pub ip_address: IpAddr,
-    /// 监听的端口号
+    /// Port number to listen on
     pub port: u16,
-    /// 上传文件的目录（默认与 directory 相同）
+    /// Directory for uploaded files (defaults to same as directory)
     pub receive_directory: PathBuf,
-    /// 下载文件的目录（默认与 directory 相同）
+    /// Directory for downloaded files (defaults to same as directory)
     pub send_directory: PathBuf,
-    /// 是否使用单端口模式（用于NAT环境）
+    /// Whether to use single port mode (for NAT environments)
     pub single_port: bool,
-    /// 是否为只读模式（拒绝所有写请求）
+    /// Whether to use read-only mode (reject all write requests)
     pub read_only: bool,
-    /// 是否覆盖已存在的文件
+    /// Whether to overwrite existing files
     pub overwrite: bool,
-    /// 内部选项（重试次数、超时等）
+    /// Internal options (retries, timeouts, etc.)
     pub opt_local: OptionsPrivate,
 }
 
 impl Config {
-    /// 创建一个新的配置
+    /// Create a new configuration
     ///
-    /// # 参数
+    /// # Arguments
     ///
-    /// * `ip_address` - 监听的 IP 地址
-    /// * `port` - 监听的端口号
-    /// * `directory` - 文件根目录
-    /// * `read_only` - 是否为只读模式
+    /// * `ip_address` - IP address to listen on
+    /// * `port` - Port number to listen on
+    /// * `directory` - Root directory for files
+    /// * `read_only` - Whether to use read-only mode
     pub fn new(ip_address: IpAddr, port: u16, directory: PathBuf, read_only: bool) -> Self {
         let receive_directory = directory.clone();
         let send_directory = directory;
@@ -59,12 +59,12 @@ impl Config {
             send_directory,
             single_port: false,
             read_only,
-            overwrite: true, // 默认允许覆盖
+            overwrite: true, // Allow overwrite by default
             opt_local: OptionsPrivate::default(),
         }
     }
 
-    /// 设置是否使用单端口模式
+    /// Set whether to use single port mode
     pub fn with_single_port(mut self, single_port: bool) -> Self {
         self.single_port = single_port;
         self
