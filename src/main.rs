@@ -7,6 +7,9 @@ use clap::{Parser, Subcommand};
 use log::{error, info};
 use std::path::PathBuf;
 
+#[macro_use]
+extern crate log;
+
 #[derive(Parser)]
 #[command(name = "xtool")]
 #[command(version, about = "Amazing Tools", long_about = None)]

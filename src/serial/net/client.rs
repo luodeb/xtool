@@ -1,4 +1,5 @@
 use anyhow::{Result, Context};
+// use log::info;
 use tokio::net::TcpStream;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::mpsc;
@@ -15,12 +16,12 @@ impl Drop for RawModeGuard {
 
 pub async fn run(server: String, port: u16) -> Result<()> {
     let addr = format!("{}:{}", server, port);
-    println!("Connecting to {}...", addr);
+    info!("Connecting to {}...", addr);
     
     let mut stream = TcpStream::connect(&addr).await.with_context(|| format!("Failed to connect to {}", addr))?;
     let (mut ri, mut wi) = stream.split();
     
-    println!("Connected. Press 'Ctrl + ]' to exit.");
+    info!("Connected. Press 'Ctrl + ]' to exit.");
     
     // Enable raw mode
     enable_raw_mode()?;

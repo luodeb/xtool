@@ -1,6 +1,5 @@
 use anyhow::{Result, Context};
 use crate::serial::config::SerialConfig;
-use log::{info, error}; // Removed warn
 use tokio::net::TcpListener;
 use tokio::sync::{broadcast, mpsc};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
