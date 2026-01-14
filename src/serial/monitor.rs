@@ -72,15 +72,44 @@ pub fn run(port_name: &str, baud_rate: u32) -> anyhow::Result<()> {
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     // Exit condition: Ctrl + ]
-                    KeyCode::Char(']') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    // Note: On some terminals/OSs (like macOS), Ctrl+] generates 0x1D (GS),
+                    // which crossterm might report as Ctrl+5 because Ctrl+5 also maps to 0x1D.
+                    KeyCode::Char(']') | KeyCode::Char('5')
+                        if key.modifiers.contains(KeyModifiers::CONTROL) =>
+                    {
                         running.store(false, Ordering::Relaxed);
                         break;
                     }
 
                     // Handle Enter key
+
+                    // Handle Enter key
                     KeyCode::Enter => {
                         // Most serial shells expect \r (Carriage Return)
                         serial_tx.write_all(b"\r")?;
+                    }
+
+                    // Handle other Control characters
+                    KeyCode::Char(c) if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        // Convert user's Ctrl+<char> to actual control byte
+                        // 'a' = 1, 'b' = 2, ... 'z' = 26
+                        // This handles Ctrl+C (0x03) correctly sending it to device
+                        // instead of sending literal "c"
+                        let byte = c as u8;
+                        if byte >= b'a' && byte <= b'z' {
+                            serial_tx.write_all(&[byte - b'a' + 1])?;
+                        } else if byte >= b'A' && byte <= b'Z' {
+                             serial_tx.write_all(&[byte - b'A' + 1])?;
+                        } else {
+                            // Verify specific cases like Ctrl+\, etc if needed.
+                            // For now, fallback to raw char if we can't map simply,
+                            // or just ignore. Ideally we map standard ASCII control ranges.
+                            // But usually just a-z is enough for basic usage.
+                            // Let's at least try to send what they typed if it's not simple alpha
+                             let mut buf = [0; 4];
+                             let s = c.encode_utf8(&mut buf);
+                             serial_tx.write_all(s.as_bytes())?;
+                        }
                     }
 
                     // Pass through other characters
